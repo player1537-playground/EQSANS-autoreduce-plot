@@ -1,0 +1,4 @@
+*.nxs
+out
+venv
+*~
