@@ -37,7 +37,8 @@ def main(filename, outdir):
     # For example, when subdivs = 8 and det_width = 192, then we take the
     # detector and split it into 8 groups along the x axis, meaning that we end
     # up with 192/8=24 columns in every group. Then we want to take the first
-    # group, and the 8//2+1=5th group and arrange them next to each other.
+    # group, and the 8//2+1=5th group and arrange them next to each other, and
+    # so on for the rest of the columns (2 and 6, 3 and 7, 4 and 8).
     #
     # You can experiment with different subdivs, but this seems to be working
     # correctly, although it's definitely a hack.
