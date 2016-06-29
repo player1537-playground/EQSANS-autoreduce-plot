@@ -13,22 +13,8 @@ ifndef PYTHON
 PYTHON := python
 endif
 
-.PHONY: venv
-venv:
-ifeq ($(wildcard venv),)
-	if [ ! -d $@ ]; then $(PYTHON) -m virtualenv $@; fi
-	@echo Run: source $@/bin/activate
-	@false
-else
-ifndef VIRTUAL_ENV
-	$(error Run: source $@/bin/activate)
-endif
-endif
-
 .PHONY: depend
-depend: venv
+depend:
+	test -n "$(VIRTUAL_ENV)" # $$VIRTUAL_ENV (Fix: source venv/bin/activate)
 	$(PYTHON) -m pip install -r requirements.txt
 	echo $(MANTID_PYTHON_PATH) > $(VIRTUAL_ENV)/lib/python2.7/site-packages/mantid.pth
-
-foo:
-	./foo.py
