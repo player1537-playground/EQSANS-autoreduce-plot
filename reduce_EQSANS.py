@@ -10,9 +10,9 @@ from __future__ import division
 
 import mantid.simpleapi
 
-import matplotlib
-matplotlib.use("agg")
-import matplotlib.pyplot as plt
+import plotly
+import plotly.offline
+import plotly.graph_objs
 
 import numpy as np
 
@@ -58,17 +58,24 @@ def main(filename, outdir):
     Z = np.ma.log(Z)
 
     # Actually plot the data
-    plt.pcolormesh(Z)
-    plt.colorbar()
-    plt.ylim([0, det_height])
-    plt.xlim([0, det_width])
-    plt.xlabel('Tube')
-    plt.ylabel('Pixel')
+    trace = plotly.graph_objs.Heatmap(
+        z=Z,
+    )
+
+    layout = plotly.graph_objs.Layout(
+        xaxis=dict(title='Tube'),
+        yaxis=dict(title='Pixel'),
+    )
+
+    fig = plotly.graph_objs.Figure(data=[trace], layout=layout)
+    div = plotly.offline.plot(fig, output_type='div', include_plotlyjs=True)
 
     # Save image to the disk
-    output_filename = "EQSANS_{}_autoreduced.png".format(run_number)
+    output_filename = "EQSANS_{}_autoreduced.html".format(run_number)
     output_path = os.path.join(outdir, output_filename)
-    plt.savefig(output_path)
+
+    with open(output_path, 'w') as f:
+        f.write(div)
 
 if __name__ == "__main__":
     import argparse

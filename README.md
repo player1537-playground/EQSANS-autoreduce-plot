@@ -56,7 +56,7 @@ Load-[Notice] Load successful, Duration 19.45 seconds
 Integration-[Notice] Integration started
 Integration-[Notice] Integration successful, Duration 0.71 seconds
 (venv) $ ls out/
-EQSANS_66051_autoreduced.png
+EQSANS_66051_autoreduced.html
 ```
 
 ![Reduced Dataset](EQSANS_66051_autoreduced.png)
