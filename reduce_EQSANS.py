@@ -16,11 +16,11 @@ import plotly.graph_objs
 
 import numpy as np
 
-def main(filename, outdir):
-    # Load the workspace
-    workspace = mantid.simpleapi.Load(filename)
-    run_number = workspace.getRunNumber()
+def get_integrated_matrix(workspace):
+    """Integrate detector readings along time and reshape to get 2D matrix
+    representing detector
 
+    """
     # Get the detector width and height from the workspace
     instrument = workspace.getInstrument()
     component = instrument[instrument.nelements() - 1]
@@ -53,6 +53,10 @@ def main(filename, outdir):
     integrated = integrated.reshape(det_width, det_height)
     integrated = integrated.T
 
+    return integrated
+
+def get_graph_div(integrated):
+    """Create a <div> using Plotly of the heatmap for the integrated matrix"""
     # Mask out any values that will make taking the log difficult
     Z = np.ma.masked_where((0 < integrated) & (integrated < np.e), integrated)
     Z = np.ma.log(Z)
@@ -69,6 +73,17 @@ def main(filename, outdir):
 
     fig = plotly.graph_objs.Figure(data=[trace], layout=layout)
     div = plotly.offline.plot(fig, output_type='div', include_plotlyjs=True)
+
+    return div
+
+def main(filename, outdir):
+    # Load the workspace
+    workspace = mantid.simpleapi.Load(filename)
+    run_number = workspace.getRunNumber()
+
+    integrated = get_integrated_matrix(workspace)
+
+    div = get_graph_div(integrated)
 
     # Save image to the disk
     output_filename = "EQSANS_{}_autoreduced.html".format(run_number)
