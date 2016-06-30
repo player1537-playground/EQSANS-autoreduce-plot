@@ -16,7 +16,8 @@ import plotly.graph_objs
 
 import numpy as np
 
-def main(filename, outdir):
+def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
+         num_bins):
     # Load the workspace
     workspace = mantid.simpleapi.Load(filename)
     run_number = workspace.getRunNumber()
@@ -27,8 +28,26 @@ def main(filename, outdir):
     det_width = component.nelements()
     det_height = component[0][0].nelements()
 
+    # Get the number of time units from workspace and calculate bin width
+    blocksize = workspace.blocksize()
+    if not bin_width:
+        bin_width = blocksize // num_bins
+    else:
+        num_bins = blocksize // bin_width
+
+    print('bin_width', bin_width)
+    print('num_bins', num_bins)
+
+    # Rebin data
+    rebinned_workspace = mantid.simpleapi.Rebin(
+        workspace,
+        Params='{},{},{}'.format(0, bin_width, bin_width * num_bins),
+    )
+
+    print('blocksize2', rebinned_workspace.blocksize())
+
     # Integrate along the time dimension to consolidate the data
-    integration_workspace = mantid.simpleapi.Integration(workspace)
+    integration_workspace = mantid.simpleapi.Integration(rebinned_workspace)
 
     # Not entirely sure why this needs to be here. As it is now, it rearranges
     # some of the columns so that they match the 2D space of the detector
@@ -90,6 +109,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=path_exists)
     parser.add_argument('outdir', type=path_exists)
+    parser.add_argument('--output-type', choices=('div', 'file'), default='div')
+    include_plotly_js = parser.add_mutually_exclusive_group(required=False)
+    include_plotly_js.add_argument('--include-plotly-js',
+                                   dest='include_plotly_js',
+                                   action='store_true')
+    include_plotly_js.add_argument('--no-include-plotly-js',
+                                   dest='include_plotly_js',
+                                   action='store_false')
+    parser.set_defaults(include_plotly_js=True)
+    parser.add_argument('--plot-type', choices=('integrated', 'tof', 'both'),
+                        default='integrated')
+    parser.add_argument('--bin-width', type=int, default=None)
+    parser.add_argument('--num-bins', type=int, default=1)
     args = parser.parse_args()
 
     main(**vars(args))
