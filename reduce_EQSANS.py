@@ -16,6 +16,13 @@ import plotly.graph_objs
 
 import numpy as np
 
+TOF_TEMPLATE = html('''
+{div}
+<script>
+
+</script>
+''')
+
 def restructure_histogram_data(data, det_width, det_height, subdivs=8):
     # Not entirely sure why this needs to be here. As it is now, it rearranges
     # some of the columns so that they match the 2D space of the detector
