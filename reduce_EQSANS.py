@@ -18,8 +18,7 @@ import plotly.graph_objs
 
 import numpy as np
 
-TOF_TEMPLATE = string.Template('''
-${div}
+TOF_TEMPLATE = '''
 <input id="plotly-slice-range" type="range"></input>
 <script>
 var graphDivs = document.getElementsByClassName('plotly-graph-div');
@@ -44,7 +43,7 @@ range.addEventListener('change', function(e) {
   changeSlice(+e.target.value);
 });
 </script>
-''')
+'''
 
 def restructure_histogram_data(data, det_width, det_height, subdivs=8):
     # Not entirely sure why this needs to be here. As it is now, it rearranges
@@ -163,16 +162,26 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
         data=integrated_traces + rebinned_traces,
         layout=layout,
     )
-    div = plotly.offline.plot(fig, output_type='div', include_plotlyjs=True)
-
-    div = TOF_TEMPLATE.substitute(div=div)
 
     # Save image to the disk
     output_filename = "EQSANS_{}_autoreduced.html".format(run_number)
     output_path = os.path.join(outdir, output_filename)
 
-    with open(output_path, 'w') as f:
-        f.write(div)
+    if output_type == 'div':
+        div = plotly.offline.plot(fig, output_type='div',
+                                  include_plotlyjs=include_plotly_js)
+        with open(output_path, 'w') as f:
+            f.write(div)
+
+    else: # output_type == 'file':
+        plotly.offline.plot(fig, filename=output_path,
+                            include_plotlyjs=include_plotly_js)
+
+
+
+    if plot_type == 'tof' or plot_type == 'integrated':
+        with open(output_path, 'a') as f:
+            f.write(TOF_TEMPLATE)
 
 if __name__ == "__main__":
     import argparse
