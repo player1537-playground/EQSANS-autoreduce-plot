@@ -19,12 +19,16 @@ import plotly.graph_objs
 import numpy as np
 
 TOF_TEMPLATE = '''
+<button id="plotly-slice-decrement" type="button">[-]</button>
 <input id="plotly-slice-range" type="range"></input>
+<button id="plotly-slice-increment" type="button">[+]</button>
 <script>
+(function() {
 var graphDivs = document.getElementsByClassName('plotly-graph-div');
 var graphDiv = graphDivs[0];
+var index = 0;
 
-function changeSlice(index) {
+function changeSlice() {
   for (var i=0; i<graphDiv.data.length; ++i) {
     graphDiv.data[i].visible = false;
   }
@@ -36,12 +40,37 @@ function changeSlice(index) {
 
 var range = document.getElementById("plotly-slice-range");
 range.style.marginTop = "20px";
+range.style.width = "80%";
 range.min = 0;
 range.max = graphDiv.data.length - 1;
+range.value = 0;
 range.addEventListener('change', function(e) {
-  console.log(e);
-  changeSlice(+e.target.value);
+  index = +e.target.value;
+  changeSlice();
 });
+
+var decrement = document.getElementById("plotly-slice-decrement");
+decrement.addEventListener('click', function(e) {
+  e.preventDefault();
+  if (index > 0) {
+    index--;
+  }
+  range.value = index;
+  changeSlice();
+});
+
+var increment = document.getElementById("plotly-slice-increment");
+increment.addEventListener('click', function(e) {
+  e.preventDefault();
+  if (index < graphDiv.data.length - 2) {
+    index++;
+  }
+  range.value = index;
+  changeSlice();
+});
+
+
+})();
 </script>
 '''
 
