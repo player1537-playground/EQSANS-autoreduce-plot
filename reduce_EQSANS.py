@@ -8,6 +8,8 @@ dimension.
 from __future__ import print_function
 from __future__ import division
 
+import string
+
 import mantid.simpleapi
 
 import plotly
@@ -16,10 +18,31 @@ import plotly.graph_objs
 
 import numpy as np
 
-TOF_TEMPLATE = html('''
-{div}
+TOF_TEMPLATE = string.Template('''
+${div}
+<input id="plotly-slice-range" type="range"></input>
 <script>
+var graphDivs = document.getElementsByClassName('plotly-graph-div');
+var graphDiv = graphDivs[0];
 
+function changeSlice(index) {
+  for (var i=0; i<graphDiv.data.length; ++i) {
+    graphDiv.data[i].visible = false;
+  }
+
+  graphDiv.data[index].visible = true;
+
+  Plotly.redraw(graphDiv);
+}
+
+var range = document.getElementById("plotly-slice-range");
+range.style.marginTop = "20px";
+range.min = 0;
+range.max = graphDiv.data.length - 1;
+range.addEventListener('change', function(e) {
+  console.log(e);
+  changeSlice(+e.target.value);
+});
 </script>
 ''')
 
@@ -141,6 +164,8 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
         layout=layout,
     )
     div = plotly.offline.plot(fig, output_type='div', include_plotlyjs=True)
+
+    div = TOF_TEMPLATE.substitute(div=div)
 
     # Save image to the disk
     output_filename = "EQSANS_{}_autoreduced.html".format(run_number)
