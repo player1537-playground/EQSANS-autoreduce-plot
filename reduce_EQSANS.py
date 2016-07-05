@@ -18,6 +18,8 @@ import plotly.graph_objs
 
 import numpy as np
 
+import scipy.stats
+
 TOF_TEMPLATE = '''
 <button id="plotly-slice-decrement" type="button">[-]</button>
 <input id="plotly-slice-range" type="range"></input>
@@ -74,29 +76,35 @@ increment.addEventListener('click', function(e) {
 </script>
 '''
 
-def restructure_histogram_data(data, det_width, det_height, subdivs=8):
-    # Not entirely sure why this needs to be here. As it is now, it rearranges
-    # some of the columns so that they match the 2D space of the detector
-    # correctly.
-    #
-    # For example, when subdivs = 8 and det_width = 192, then we take the
-    # detector and split it into 8 groups along the x axis, meaning that we end
-    # up with 192/8=24 columns in every group. Then we want to take the first
-    # group, and the 8//2+1=5th group and arrange them next to each other, and
-    # so on for the rest of the columns (2 and 6, 3 and 7, 4 and 8).
-    #
-    # You can experiment with different subdivs, but this seems to be working
-    # correctly, although it's definitely a hack.
-    indices = [x+y*subdivs//2 for x in range(subdivs // 2) for y in range(2)]
+def restructure_histogram_data(det_lookup, data, bins=None):
+    Y = []
+    X = []
+    Z = []
+    for index, val in enumerate(data):
+        (i, j, _) = det_lookup[index]
+        X.append(j)
+        Y.append(i)
+        Z.append(val)
+    Y = np.array(Y)
+    X = np.array(X)
+    Z = np.array(Z)
 
-    # Apply the subdivisions as well as reshape the 1 dimensions Y values that
-    # we get from Mantid into a 2D matrix of shape (height, width)
-    data = data.reshape(det_width // subdivs, subdivs, det_height)
-    data = data.T[:, indices, :].T
-    data = data.reshape(det_width, det_height)
-    data = data.T
+    det_width = len(np.unique(X))
+    det_height = len(np.unique(Y))
 
-    return data
+    if bins is None:
+        bins = [det_width // 2, det_height // 2]
+
+    Zp, xedges, yedges, _ = scipy.stats.binned_statistic_2d(
+        X, Y, Z,
+        bins=bins,
+        statistic='mean',
+    )
+
+    Xp = xedges[1:] - (xedges[1] - xedges[0]) / 2
+    Yp = yedges[1:] - (yedges[1] - yedges[0]) / 2
+
+    return Zp
 
 def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
          num_bins):
@@ -109,6 +117,11 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
     component = instrument[instrument.nelements() - 1]
     det_width = component.nelements()
     det_height = component[0][0].nelements()
+    det_lookup = {
+        component[i][0][j].getID(): component[i][0][j].getPos()
+        for i in xrange(component.nelements())
+        for j in xrange(component[i][0].nelements())
+    }
 
     # Get the number of time units from workspace and calculate bin width
     blocksize = workspace.blocksize()
@@ -131,7 +144,7 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
         maximum = max(maximum, np.log(np.max(rebinned_y)))
 
         all_rebinned = [
-            restructure_histogram_data(rebinned_y[:, i], det_width, det_height)
+            restructure_histogram_data(det_lookup, rebinned_y[:, i])
             for i in range(num_bins)
         ]
 
@@ -144,14 +157,16 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
         maximum = max(maximum, np.log(np.max(integrated_y)))
 
         # Restructure Y data
-        integrated = restructure_histogram_data(integrated_y, det_width, det_height)
+        integrated = restructure_histogram_data(det_lookup, integrated_y)
 
     rebinned_traces = []
     if plot_type == 'tof' or plot_type == 'both':
         for i, rebinned in enumerate(all_rebinned):
             # Mask out any values that will make taking the log difficult
-            mask = (0 < rebinned) & (rebinned < np.e)
-            rebinned_z = np.ma.masked_where(mask, rebinned)
+            rebinned_z = rebinned
+            rebinned_z = np.ma.masked_invalid(rebinned_z)
+            mask = (0 < rebinned_z) & (rebinned_z < np.e)
+            rebinned_z = np.ma.masked_where(mask, rebinned_z)
             rebinned_z = np.ma.log(rebinned_z)
 
             # Actually plot the data
@@ -173,8 +188,10 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
     integrated_traces = []
     if plot_type == 'integrated' or plot_type == 'both':
         # Mask out any values that will make taking the log difficult
-        mask = (0 < integrated) & (integrated < np.e)
-        integrated_z = np.ma.masked_where(mask, integrated)
+        integrated_z = integrated
+        integrated_z = np.ma.masked_invalid(integrated_z)
+        mask = (0 < integrated_z) & (integrated_z < np.e)
+        integrated_z = np.ma.masked_where(mask, integrated_z)
         integrated_z = np.ma.log(integrated_z)
 
         integrated_trace = plotly.graph_objs.Heatmap(
