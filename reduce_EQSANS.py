@@ -165,6 +165,11 @@ def main(filename, outdir, output_type, include_plotly_js, plot_type, bin_width,
 
             rebinned_traces.append(rebinned_trace)
 
+    import json
+    import gzip
+    with gzip.open('rebinned.json.gz', 'w') as f:
+        json.dump([x.z.tolist() for x in rebinned_traces], f)
+
     integrated_traces = []
     if plot_type == 'integrated' or plot_type == 'both':
         # Mask out any values that will make taking the log difficult
